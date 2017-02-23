@@ -25,40 +25,51 @@
   <body>
     <div id="example"></div>
 
+	 
+  <!-- Load third party scripts -->
   <script src="lvhackJS/third-party/threejs/three.js"></script>
   <script src="lvhackJS/third-party/threejs/StereoEffect.js"></script>
   <script src="lvhackJS/third-party/threejs/DeviceOrientationControls.js"></script>
   <script src="lvhackJS/third-party/threejs/OrbitControls.js"></script>
+	
+   <!-- Load world script containing Universe function -->
   <script src="World2.js"></script>
 
+	 
   <script>
+	  //Define some of the global variables
     var camera, scene, renderer;
     var effect, controls;
     var element, container;
 
     var clock = new THREE.Clock();
 
-    init();
-    animate();
+    init(); //Initialize the world
+    animate(); //Bring the world to life
 
 
     function init() {
 	
-	var world = new Universe("a");
+	var world = new Universe("a"); //Create world object from included world script
 	
+	//Initialize renderer and setup view
       renderer = new THREE.WebGLRenderer();
       element = renderer.domElement;
       container = document.getElementById('example');
       container.appendChild(element);
-
+	
+	//Apply stereo effect for cardboard
       effect = new THREE.StereoEffect(renderer);
-
+	 
+	//Create scene to add stuff to
       scene = new THREE.Scene();
-	  
+	 
+	//Create camera to view the scene with and add it to the scene
       camera = new THREE.PerspectiveCamera(90, ((screen.width/2)/screen.height), 0.001, 700);
       camera.position.set(world.camera.x, world.camera.y, world.camera.z);
       scene.add(camera);
 
+	//Set camera controls
       controls = new THREE.OrbitControls(camera, element);
       controls.rotateUp(world.camera.radiansUp);
 	  controls.rotateLeft(world.camera.radiansRight);
@@ -75,10 +86,12 @@
           return;
         }
 
+	  //Get camera controls from device orientation
         controls = new THREE.DeviceOrientationControls(camera, true);
         controls.connect();
         controls.update();
-
+	  
+	  //Make fullscreen when screen tapped
         element.addEventListener('click', fullscreen, false);
 
         window.removeEventListener('deviceorientation', setOrientationControls, true);
@@ -86,11 +99,13 @@
       window.addEventListener('deviceorientation', setOrientationControls, true);
 
 
-	  var ambientLight = new THREE.AmbientLight( world.light.ambient ); // soft white light
+	  //Create ambient light (overall world light level) and hemisphere light, and add them to the scene
+	  var ambientLight = new THREE.AmbientLight( world.light.ambient ); 
 	  scene.add( ambientLight );
       var hemisphereLight = new THREE.HemisphereLight(world.light.hemisphere.color, 0x000000, world.light.hemisphere.brightness);
       scene.add(hemisphereLight);
 
+	    //This bit is no longer used, texture does not exist
       var texture = THREE.ImageUtils.loadTexture(
         'lvhackTEXTURES/patterns/checker.png'
       );
@@ -99,6 +114,7 @@
       texture.repeat = new THREE.Vector2(50, 50);
       texture.anisotropy = renderer.getMaxAnisotropy();
 
+	//Create a material
       var material = new THREE.MeshPhongMaterial({
         color: 0xffffff,
         specular: 0xffffff,
@@ -107,12 +123,14 @@
         map: texture
       });
 
+	//Create a plane
       var geometry = new THREE.PlaneGeometry(1000, 1000);
 
       //var mesh = new THREE.Mesh(geometry, material);
       //mesh.rotation.x = -Math.PI / 2;
       //scene.add(mesh);
 
+	//Detect window size change and resize viewport
       window.addEventListener('resize', resize, false);
       setTimeout(resize, 1);
 	  
@@ -156,31 +174,34 @@
 	  
 	  
 	  
-	  //anim
-	  for(j = 0; j < world.wall.length; j++)
+	  //Init Animation Info
+	  for(j = 0; j < world.wall.length; j++) //Loop through all given walls
 	  {
-		world.textures.push(new Array());
-		world.walls.push(new Array());
+		world.textures.push(new Array()); //Add new wall to textures array
+		world.walls.push(new Array()); //Add new wall to walls array
 		
-		for(i = 0; i < world.wall[j].frameCount; i++)
+		for(i = 0; i < world.wall[j].frameCount; i++) //Load all frames for each wall as textures and add them to that wall in textures array
 		{
 			world.textures[j].push(THREE.ImageUtils.loadTexture( "TEXTURES/"+world.wall[j].name+"/frame_"+i+"_delay-"+(world.wall[j].delay/1000)+"s.gif" ));
 			console.log("TEXTURES/"+world.wall[j].name+"/frame_"+i+"_delay-"+(world.wall[j].delay/1000)+"s.gif");
 		}
-		if(world.wall[j].reverseFrames == true)
+		if(world.wall[j].reverseFrames == true) //Reverse frames if specified to play in reverse
 		{
 			world.textures[j].reverse();
 		}
-		world.walls[j].material = new THREE.MeshPhongMaterial({
+		  //Create material for wall and set to first texture
+		world.walls[j].material = new THREE.MeshPhongMaterial({ 
 			color: 0xffffff,
 			specular: 0xffffff,
 			shininess: 100,
 			shading: THREE.FlatShading,
 			map: world.textures[j][0]
         });
-		world.walls[j].geometryLateral = new THREE.BoxGeometry(world.wall[j].xWidth, world.wall[j].zWidth, world.wall[j].yWidth);
-		world.walls[j].mesh = new THREE.Mesh(world.walls[j].geometryLateral, world.walls[j].material);
-		scene.add(world.walls[j].mesh);
+		  //Create wall object in scene
+		world.walls[j].geometryLateral = new THREE.BoxGeometry(world.wall[j].xWidth, world.wall[j].zWidth, world.wall[j].yWidth); //Create shape
+		world.walls[j].mesh = new THREE.Mesh(world.walls[j].geometryLateral, world.walls[j].material); //Apply material to shape
+		scene.add(world.walls[j].mesh); //Add to scene
+		  //Set position of wall within scene
 		world.walls[j].mesh.position.x=+world.wall[j].xOffset;
 		world.walls[j].mesh.position.y=+world.wall[j].zOffset;
 		world.walls[j].mesh.position.z=+world.wall[j].yOffset;
@@ -194,16 +215,19 @@
 	  //END ADDED
     }
 	
+	  //Recursive Function to handle animation of each wall
 	function animateWall(world, j, frame)
 	{
-		
+		//Reset frame counter to first frame if end reached
 		if(frame >= world.wall[j].frameCount)
 		{
 			frame = 0;
 		}
-		world.walls[j].material.map = world.textures[j][frame];
+		
+		world.walls[j].material.map = world.textures[j][frame];//Set wall material texture to that of current frame
 		//console.log(frame);
 
+		//Get camera direction and determine if looking at wall
 		//viewing only
 		var vect = camera.getWorldDirection();
 		var unit = camera.getWorldDirection();
@@ -212,39 +236,39 @@
 		unit.z = Math.abs(unit.z);
 		var mult = world.lookConeMult;
 		if(world.wall[j].playState == "ALWAYS")
-		if(   (world.wall[j].playState == "ALWAYS")    )
+		if(   (world.wall[j].playState == "ALWAYS")    ) //Always play animation
 		{
-			frame = frame+1;
+			frame = frame+1; //Specify next frame to show
 		}
-		if(   (world.wall[j].playState == "LOOKING")   )
-		{
-			if(   (((mult*unit.x > unit.y && mult*unit.x > unit.z) && ((world.wall[j].xOffset > 0 && vect.x > 0)||(world.wall[j].xOffset < 0 && vect.x < 0)))  ||   ((mult*unit.y > unit.x && mult*unit.y > unit.z) && ((world.wall[j].zOffset > 0 && vect.y > 0)||(world.wall[j].zOffset < 0 && vect.y < 0)))   ||   ((mult*unit.z > unit.y && mult*unit.z > unit.x) && ((world.wall[j].yOffset > 0 && vect.z > 0)||(world.wall[j].yOffset < 0 && vect.z < 0))))   )
-			{
-				frame = frame+1;
-			}
-		}
-		if(   (world.wall[j].playState == "NOTLOOKING")   )
-		{
-			if(   !(((mult*unit.x > unit.y && mult*unit.x > unit.z) && ((world.wall[j].xOffset > 0 && vect.x > 0)||(world.wall[j].xOffset < 0 && vect.x < 0)))  ||   ((mult*unit.y > unit.x && mult*unit.y > unit.z) && ((world.wall[j].zOffset > 0 && vect.y > 0)||(world.wall[j].zOffset < 0 && vect.y < 0)))   ||   ((mult*unit.z > unit.y && mult*unit.z > unit.x) && ((world.wall[j].yOffset > 0 && vect.z > 0)||(world.wall[j].yOffset < 0 && vect.z < 0))))   )
-			{
-				frame = frame+1;
-			}
-		}
-		if(   world.wall[j].lookFrame >= 0   )
+		if(   (world.wall[j].playState == "LOOKING")   ) //Play animation when looking
 		{
 			if(   (((mult*unit.x > unit.y && mult*unit.x > unit.z) && ((world.wall[j].xOffset > 0 && vect.x > 0)||(world.wall[j].xOffset < 0 && vect.x < 0)))  ||   ((mult*unit.y > unit.x && mult*unit.y > unit.z) && ((world.wall[j].zOffset > 0 && vect.y > 0)||(world.wall[j].zOffset < 0 && vect.y < 0)))   ||   ((mult*unit.z > unit.y && mult*unit.z > unit.x) && ((world.wall[j].yOffset > 0 && vect.z > 0)||(world.wall[j].yOffset < 0 && vect.z < 0))))   )
 			{
-				frame = world.wall[j].lookFrame;
+				frame = frame+1; //Specify next frame to show
 			}
 		}
-		if(   world.wall[j].lookAwayFrame >= 0   )
+		if(   (world.wall[j].playState == "NOTLOOKING")   ) //Play animation when not looking
 		{
 			if(   !(((mult*unit.x > unit.y && mult*unit.x > unit.z) && ((world.wall[j].xOffset > 0 && vect.x > 0)||(world.wall[j].xOffset < 0 && vect.x < 0)))  ||   ((mult*unit.y > unit.x && mult*unit.y > unit.z) && ((world.wall[j].zOffset > 0 && vect.y > 0)||(world.wall[j].zOffset < 0 && vect.y < 0)))   ||   ((mult*unit.z > unit.y && mult*unit.z > unit.x) && ((world.wall[j].yOffset > 0 && vect.z > 0)||(world.wall[j].yOffset < 0 && vect.z < 0))))   )
 			{
-				frame = world.wall[j].lookAwayFrame;
+				frame = frame+1; //Specify next frame to show
 			}
 		}
-		setTimeout(animateWall, world.wall[j].delay, world, j, frame);
+		if(   world.wall[j].lookFrame >= 0   ) //Show specific frame when looked at
+		{
+			if(   (((mult*unit.x > unit.y && mult*unit.x > unit.z) && ((world.wall[j].xOffset > 0 && vect.x > 0)||(world.wall[j].xOffset < 0 && vect.x < 0)))  ||   ((mult*unit.y > unit.x && mult*unit.y > unit.z) && ((world.wall[j].zOffset > 0 && vect.y > 0)||(world.wall[j].zOffset < 0 && vect.y < 0)))   ||   ((mult*unit.z > unit.y && mult*unit.z > unit.x) && ((world.wall[j].yOffset > 0 && vect.z > 0)||(world.wall[j].yOffset < 0 && vect.z < 0))))   )
+			{
+				frame = world.wall[j].lookFrame; //Specify next frame to show
+			}
+		}
+		if(   world.wall[j].lookAwayFrame >= 0   ) //Show specific frame when not looked at
+		{
+			if(   !(((mult*unit.x > unit.y && mult*unit.x > unit.z) && ((world.wall[j].xOffset > 0 && vect.x > 0)||(world.wall[j].xOffset < 0 && vect.x < 0)))  ||   ((mult*unit.y > unit.x && mult*unit.y > unit.z) && ((world.wall[j].zOffset > 0 && vect.y > 0)||(world.wall[j].zOffset < 0 && vect.y < 0)))   ||   ((mult*unit.z > unit.y && mult*unit.z > unit.x) && ((world.wall[j].yOffset > 0 && vect.z > 0)||(world.wall[j].yOffset < 0 && vect.z < 0))))   )
+			{
+				frame = world.wall[j].lookAwayFrame; //Specify next frame to show
+			}
+		}
+		setTimeout(animateWall, world.wall[j].delay, world, j, frame); //Call animateWall after apropriate frame delay and pass next frame
 	}
 	
 
